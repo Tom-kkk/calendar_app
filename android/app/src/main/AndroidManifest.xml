@@ -1,4 +1,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <!-- 如需精确定时（仅在需要精确闹钟时打开） -->
+    <!-- <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"/> -->
+
     <application
         android:label="calendar_app"
         android:name="${applicationName}"
