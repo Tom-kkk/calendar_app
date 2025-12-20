@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../models/calendar_event.dart';
 import '../providers/calendar_provider.dart';
 
 /// 日视图组件
@@ -166,7 +167,7 @@ class _DayViewState extends ConsumerState<DayView> {
           Wrap(
             spacing: 8,
             runSpacing: 4,
-            children: events.map((event) {
+            children: events.map<Widget>((event) {
               return _buildAllDayEventChip(event);
             }).toList(),
           ),

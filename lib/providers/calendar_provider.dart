@@ -1,24 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../models/calendar_event.dart';
 
 /// 日/周/月视图枚举
 enum CalendarView { day, week, month }
-
-/// 事件模型（可根据需要扩展）
-class CalendarEvent {
-  CalendarEvent({
-    required this.id,
-    required this.title,
-    required this.start,
-    required this.end,
-    this.colorHex,
-  });
-
-  final String id;
-  final String title;
-  final DateTime start;
-  final DateTime end;
-  final int? colorHex;
-}
 
 /// 全局日历状态
 class CalendarState {

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../models/calendar_event.dart';
 import '../providers/calendar_provider.dart';
 
 /// 周视图组件
@@ -420,7 +421,7 @@ class _WeekViewState extends ConsumerState<WeekView> {
     final events = _getEventsForDay(day);
     final timedEvents = events.where((e) => !_isAllDayEvent(e)).toList();
 
-    return timedEvents.map((event) {
+    return timedEvents.map<Widget>((event) {
       // 计算事件在时间轴上的位置
       final eventStart = event.start.isBefore(dayStart) ? dayStart : event.start;
       final eventEnd = event.end.isAfter(dayStart.add(const Duration(days: 1)))

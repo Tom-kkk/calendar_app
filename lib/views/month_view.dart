@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:intl/intl.dart';
 
+import '../models/calendar_event.dart';
 import '../providers/calendar_provider.dart';
 
 /// 月视图组件
@@ -214,7 +215,7 @@ class _MonthViewState extends ConsumerState<MonthView> {
               // 显示事件标记点
               return Row(
                 mainAxisSize: MainAxisSize.min,
-                children: events.take(3).map((event) {
+                children: events.take(3).map<Widget>((event) {
                   return Container(
                     width: 6,
                     height: 6,

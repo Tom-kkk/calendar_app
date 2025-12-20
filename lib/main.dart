@@ -4,15 +4,23 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 
+import 'models/calendar_event.dart';
+import 'models/reminder_settings.dart';
 import 'providers/calendar_provider.dart';
 import 'views/day_view.dart';
 import 'views/week_view.dart';
 import 'views/month_view.dart';
+import 'views/event_form_view.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   await Hive.initFlutter(); // 本地存储初始化
+
+  // 注册 Hive 适配器
+  Hive.registerAdapter(CalendarEventAdapter());
+  Hive.registerAdapter(ReminderSettingAdapter());
+
   tz.initializeTimeZones(); // 加载时区数据，供本地通知使用
   await initializeDateFormatting('zh_CN', null); // 初始化中文本地化数据
 
@@ -57,8 +65,13 @@ class MainApp extends StatelessWidget {
                   ),
                   floatingActionButton: FloatingActionButton(
                     onPressed: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('TODO: 快速创建事件')),
+                      final selectedDate = calendar.selectedDate;
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) => EventFormView(
+                            initialDate: selectedDate,
+                          ),
+                        ),
                       );
                     },
                     child: const Icon(Icons.add),
