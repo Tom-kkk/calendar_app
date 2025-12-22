@@ -16,12 +16,48 @@ class DayView extends ConsumerStatefulWidget {
 }
 
 class _DayViewState extends ConsumerState<DayView> {
-  final ScrollController _scrollController = ScrollController();
+  late final ScrollController _timeLabelController;
+  late final ScrollController _contentController;
+  bool _isSyncing = false;
 
   @override
   void dispose() {
-    _scrollController.dispose();
+    _timeLabelController
+      ..removeListener(_syncFromLabels)
+      ..dispose();
+    _contentController
+      ..removeListener(_syncFromContent)
+      ..dispose();
     super.dispose();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _timeLabelController = ScrollController();
+    _contentController = ScrollController();
+    _contentController.addListener(_syncFromContent);
+    _timeLabelController.addListener(_syncFromLabels);
+  }
+
+  void _syncFromContent() {
+    if (_isSyncing) return;
+    _isSyncing = true;
+    _timeLabelController.jumpTo(_contentController.offset.clamp(
+      _timeLabelController.position.minScrollExtent,
+      _timeLabelController.position.maxScrollExtent,
+    ));
+    _isSyncing = false;
+  }
+
+  void _syncFromLabels() {
+    if (_isSyncing) return;
+    _isSyncing = true;
+    _contentController.jumpTo(_timeLabelController.offset.clamp(
+      _contentController.position.minScrollExtent,
+      _contentController.position.maxScrollExtent,
+    ));
+    _isSyncing = false;
   }
 
   /// 将DateTime转换为只包含年月日的键（用于事件映射）
@@ -91,6 +127,10 @@ class _DayViewState extends ConsumerState<DayView> {
   Widget _buildDayHeader(DateTime date) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.35),
+        borderRadius: BorderRadius.circular(12),
+      ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -227,7 +267,7 @@ class _DayViewState extends ConsumerState<DayView> {
         SizedBox(
           width: 60,
           child: ListView.builder(
-            controller: _scrollController,
+            controller: _timeLabelController,
             itemCount: hours.length,
             itemBuilder: (context, index) {
               final hour = hours[index];
@@ -253,7 +293,7 @@ class _DayViewState extends ConsumerState<DayView> {
         // 事件区域（可滚动）
         Expanded(
           child: SingleChildScrollView(
-            controller: _scrollController,
+            controller: _contentController,
             child: SizedBox(
               height: totalHeight,
               child: Stack(

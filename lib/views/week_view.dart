@@ -16,12 +16,48 @@ class WeekView extends ConsumerStatefulWidget {
 }
 
 class _WeekViewState extends ConsumerState<WeekView> {
-  final ScrollController _scrollController = ScrollController();
+  late final ScrollController _timeLabelController;
+  late final ScrollController _contentController;
+  bool _isSyncing = false;
 
   @override
   void dispose() {
-    _scrollController.dispose();
+    _timeLabelController
+      ..removeListener(_syncFromLabels)
+      ..dispose();
+    _contentController
+      ..removeListener(_syncFromContent)
+      ..dispose();
     super.dispose();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _timeLabelController = ScrollController();
+    _contentController = ScrollController();
+    _timeLabelController.addListener(_syncFromLabels);
+    _contentController.addListener(_syncFromContent);
+  }
+
+  void _syncFromLabels() {
+    if (_isSyncing) return;
+    _isSyncing = true;
+    _contentController.jumpTo(_timeLabelController.offset.clamp(
+      _contentController.position.minScrollExtent,
+      _contentController.position.maxScrollExtent,
+    ));
+    _isSyncing = false;
+  }
+
+  void _syncFromContent() {
+    if (_isSyncing) return;
+    _isSyncing = true;
+    _timeLabelController.jumpTo(_contentController.offset.clamp(
+      _timeLabelController.position.minScrollExtent,
+      _timeLabelController.position.maxScrollExtent,
+    ));
+    _isSyncing = false;
   }
 
   /// 获取一周的开始日期（周一）
@@ -91,9 +127,15 @@ class _WeekViewState extends ConsumerState<WeekView> {
         // 周头部：显示日期和导航
         _buildWeekHeader(weekDays, selectedDate),
         const Divider(height: 1),
-        // 时间轴区域
+        // 时间轴区域（上方显示日期头，下方同步滚动时间轴）
         Expanded(
-          child: _buildWeekTimeAxis(weekDays),
+          child: Column(
+            children: [
+              _buildDayHeaderRow(weekDays),
+              Container(height: 1, color: Theme.of(context).dividerColor),
+              Expanded(child: _buildWeekTimeAxis(weekDays)),
+            ],
+          ),
         ),
       ],
     );
@@ -108,6 +150,10 @@ class _WeekViewState extends ConsumerState<WeekView> {
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.35),
+        borderRadius: BorderRadius.circular(12),
+      ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -215,7 +261,38 @@ class _WeekViewState extends ConsumerState<WeekView> {
     return weekNumber > 53 ? 53 : weekNumber;
   }
 
-  /// 构建周时间轴
+  /// 构建日期头部横排
+  Widget _buildDayHeaderRow(List<DateTime> weekDays) {
+    return Row(
+      children: [
+        // 占位，与左侧时间刻度宽度保持一致，保证日期头与事件列对齐
+        SizedBox(
+          width: 61, // 60刻度 + 1分隔线
+        ),
+        // 日期列
+        Expanded(
+          child: Row(
+            children: weekDays.asMap().entries.expand((entry) {
+              final index = entry.key;
+              final day = entry.value;
+              final isLast = index == weekDays.length - 1;
+              return [
+                Expanded(child: _buildDayHeader(day)),
+                if (!isLast)
+                  Container(
+                    width: 1,
+                    height: 48,
+                    color: Theme.of(context).dividerColor,
+                  ),
+              ];
+            }).toList(),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// 构建周时间轴（时间刻度与事件区域同步滚动）
   Widget _buildWeekTimeAxis(List<DateTime> weekDays) {
     // 每小时60像素，总共1440像素
     const hourHeight = 60.0;
@@ -228,7 +305,7 @@ class _WeekViewState extends ConsumerState<WeekView> {
         SizedBox(
           width: 60,
           child: ListView.builder(
-            controller: _scrollController,
+            controller: _timeLabelController,
             itemCount: hours.length,
             itemBuilder: (context, index) {
               final hour = hours[index];
@@ -251,52 +328,35 @@ class _WeekViewState extends ConsumerState<WeekView> {
           width: 1,
           color: Theme.of(context).dividerColor,
         ),
-        // 日期列
+        // 日期列（统一一个垂直滚动器，避免多控件共用同一controller）
         Expanded(
-          child: Row(
-            children: weekDays.asMap().entries.expand((entry) {
-              final index = entry.key;
-              final day = entry.value;
-              final isLast = index == weekDays.length - 1;
-              return [
-                Expanded(
-                  child: Column(
-                    children: [
-                      // 日期头部
-                      _buildDayHeader(day, weekDays),
-                      // 分隔线
+          child: SingleChildScrollView(
+            controller: _contentController,
+            child: SizedBox(
+              height: totalHeight,
+              child: Row(
+                children: weekDays.asMap().entries.expand((entry) {
+                  final index = entry.key;
+                  final day = entry.value;
+                  final isLast = index == weekDays.length - 1;
+                  return [
+                    Expanded(
+                      child: Stack(
+                        children: [
+                          _buildTimeGrid(hours, hourHeight),
+                          ..._buildDayEvents(day, hourHeight),
+                        ],
+                      ),
+                    ),
+                    if (!isLast)
                       Container(
-                        height: 1,
+                        width: 1,
                         color: Theme.of(context).dividerColor,
                       ),
-                      // 时间轴内容
-                      Expanded(
-                        child: SingleChildScrollView(
-                          controller: _scrollController,
-                          child: SizedBox(
-                            height: totalHeight,
-                            child: Stack(
-                              children: [
-                                // 时间网格线
-                                _buildTimeGrid(hours, hourHeight),
-                                // 事件块
-                                ..._buildDayEvents(day, hourHeight),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                // 列分隔线
-                if (!isLast)
-                  Container(
-                    width: 1,
-                    color: Theme.of(context).dividerColor,
-                  ),
-              ];
-            }).toList(),
+                  ];
+                }).toList(),
+              ),
+            ),
           ),
         ),
       ],
@@ -304,7 +364,7 @@ class _WeekViewState extends ConsumerState<WeekView> {
   }
 
   /// 构建日期头部
-  Widget _buildDayHeader(DateTime day, List<DateTime> weekDays) {
+  Widget _buildDayHeader(DateTime day) {
     final isToday = _isToday(day);
     final isSelected = ref.watch(calendarProvider).selectedDate.year == day.year &&
         ref.watch(calendarProvider).selectedDate.month == day.month &&

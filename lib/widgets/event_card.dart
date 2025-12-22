@@ -31,20 +31,23 @@ class EventCard extends StatelessWidget {
     final color = event.colorHex != null
         ? Color(event.colorHex!)
         : Theme.of(context).colorScheme.primary;
+    final background = color.withOpacity(0.08);
 
     return InkWell(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.all(8),
+        padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
-          border: Border(
-            left: BorderSide(
-              color: color,
-              width: 3,
+          color: background,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: color.withOpacity(0.18)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.03),
+              blurRadius: 6,
+              offset: const Offset(0, 2),
             ),
-          ),
-          borderRadius: BorderRadius.circular(4),
+          ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -53,7 +56,7 @@ class EventCard extends StatelessWidget {
             Text(
               event.title,
               style: TextStyle(
-                fontSize: 13,
+                fontSize: 14,
                 fontWeight: FontWeight.bold,
                 color: color,
               ),
@@ -65,7 +68,7 @@ class EventCard extends StatelessWidget {
               Text(
                 '$startTime - $endTime',
                 style: TextStyle(
-                  fontSize: 11,
+                  fontSize: 12,
                   color: Theme.of(context)
                       .colorScheme
                       .onSurface

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:intl/intl.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 
 import 'models/calendar_event.dart';
@@ -33,6 +34,12 @@ class MainApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF1A73E8)),
+        scaffoldBackgroundColor: const Color(0xFFF6F7FB),
+        useMaterial3: true,
+      ),
       home: Consumer(
         builder: (context, ref, _) {
           final calendar = ref.watch(calendarProvider);
@@ -43,25 +50,131 @@ class MainApp extends StatelessWidget {
             length: 3,
             child: Builder(
               builder: (context) {
+                final date = calendar.selectedDate;
+                final theme = Theme.of(context);
+                final weekNumber = _getWeekNumber(date);
+                final monthText = '${date.year}年${date.month}月';
+
                 return Scaffold(
-                  appBar: AppBar(
-                    title: const Text('Calendar'),
-                    actions: const [_OverflowMenu()],
-                    bottom: TabBar(
-                      onTap: (index) => notifier.switchView(_indexToView(index)),
-                      tabs: const [
-                        Tab(text: '日'),
-                        Tab(text: '周'),
-                        Tab(text: '月'),
+                  backgroundColor: theme.scaffoldBackgroundColor,
+                  body: SafeArea(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                          child: Row(
+                            children: [
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    monthText,
+                                    style: theme.textTheme.headlineSmall?.copyWith(
+                                      fontWeight: FontWeight.w700,
+                                      color: theme.colorScheme.onSurface,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    '第$weekNumber周',
+                                    style: theme.textTheme.bodyMedium?.copyWith(
+                                      color: theme.colorScheme.onSurface.withOpacity(0.6),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const Spacer(),
+                              IconButton(
+                                icon: const Icon(Icons.expand_less),
+                                onPressed: () {},
+                                tooltip: '展开/收起',
+                              ),
+                              const _OverflowMenu(),
+                            ],
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                DateFormat('yyyy年MM月dd日', 'zh_CN').format(date),
+                                style: theme.textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              Text(
+                                '农历信息',
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: theme.colorScheme.onSurface.withOpacity(0.45),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(14),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.04),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: TabBar(
+                              onTap: (index) => notifier.switchView(_indexToView(index)),
+                              indicator: BoxDecoration(
+                                color: theme.colorScheme.primary,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              indicatorSize: TabBarIndicatorSize.tab,
+                              labelColor: theme.colorScheme.onPrimary,
+                              unselectedLabelColor:
+                                  theme.colorScheme.onSurface.withOpacity(0.6),
+                              labelStyle: const TextStyle(fontWeight: FontWeight.w700),
+                              tabs: const [
+                                Tab(text: '日'),
+                                Tab(text: '周'),
+                                Tab(text: '月'),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Expanded(
+                          child: Container(
+                            margin: const EdgeInsets.symmetric(horizontal: 12),
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(16),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.04),
+                                  blurRadius: 16,
+                                  offset: const Offset(0, 8),
+                                ),
+                              ],
+                            ),
+                            child: const TabBarView(
+                              children: [
+                                DayView(),
+                                WeekView(),
+                                MonthView(),
+                              ],
+                            ),
+                          ),
+                        ),
                       ],
                     ),
-                  ),
-                  body: const TabBarView(
-                    children: [
-                      DayView(),
-                      WeekView(),
-                      MonthView(),
-                    ],
                   ),
                   floatingActionButton: FloatingActionButton(
                     onPressed: () {
@@ -107,6 +220,21 @@ CalendarView _indexToView(int index) {
     default:
       return CalendarView.month;
   }
+}
+
+int _getWeekNumber(DateTime date) {
+  final year = date.year;
+  final jan4 = DateTime(year, 1, 4);
+  final jan4Weekday = jan4.weekday;
+  final firstWeekStart = jan4.subtract(Duration(days: jan4Weekday - 1));
+  final weekStart = date.subtract(Duration(days: date.weekday - 1));
+  if (weekStart.isBefore(firstWeekStart)) {
+    final prevYearDec31 = DateTime(year - 1, 12, 31);
+    return _getWeekNumber(prevYearDec31);
+  }
+  final daysDiff = weekStart.difference(firstWeekStart).inDays;
+  final weekNumber = (daysDiff ~/ 7) + 1;
+  return weekNumber > 53 ? 53 : weekNumber;
 }
 
 class _OverflowMenu extends StatelessWidget {

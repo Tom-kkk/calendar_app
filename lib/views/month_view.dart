@@ -89,151 +89,162 @@ class _MonthViewState extends ConsumerState<MonthView> {
 
     return Column(
       children: [
-        // 日历表格
-        TableCalendar<CalendarEvent>(
-          firstDay: DateTime.utc(1900, 1, 1),
-          lastDay: DateTime.utc(2100, 12, 31),
-          focusedDay: _focusedDay,
-          selectedDayPredicate: (day) {
-            return isSameDay(_selectedDay, day);
-          },
-          eventLoader: _getEventsForDay,
-          startingDayOfWeek: StartingDayOfWeek.monday,
-          calendarFormat: _calendarFormat,
-          locale: 'zh_CN',
-          availableCalendarFormats: const {
-            CalendarFormat.month: '月',
-            CalendarFormat.twoWeeks: '两周',
-            CalendarFormat.week: '周',
-          },
-          headerStyle: HeaderStyle(
-            formatButtonVisible: true,
-            titleCentered: true,
-            formatButtonShowsNext: false,
-            formatButtonDecoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.primary,
-              borderRadius: BorderRadius.circular(8),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+          child: TableCalendar<CalendarEvent>(
+            firstDay: DateTime.utc(1900, 1, 1),
+            lastDay: DateTime.utc(2100, 12, 31),
+            focusedDay: _focusedDay,
+            selectedDayPredicate: (day) {
+              return isSameDay(_selectedDay, day);
+            },
+            eventLoader: _getEventsForDay,
+            startingDayOfWeek: StartingDayOfWeek.monday,
+            calendarFormat: _calendarFormat,
+            locale: 'zh_CN',
+            availableCalendarFormats: const {
+              CalendarFormat.month: '月',
+              CalendarFormat.twoWeeks: '两周',
+              CalendarFormat.week: '周',
+            },
+            headerStyle: HeaderStyle(
+              formatButtonVisible: true,
+              titleCentered: true,
+              formatButtonShowsNext: false,
+              formatButtonDecoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.primary.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              formatButtonTextStyle: TextStyle(
+                color: Theme.of(context).colorScheme.primary,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+              leftChevronIcon: Icon(
+                Icons.chevron_left,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+              rightChevronIcon: Icon(
+                Icons.chevron_right,
+                color: Theme.of(context).colorScheme.primary,
+              ),
             ),
-            formatButtonTextStyle: TextStyle(
-              color: Theme.of(context).colorScheme.onPrimary,
-              fontSize: 12,
+            calendarStyle: CalendarStyle(
+              outsideDaysVisible: false,
+              weekendTextStyle: TextStyle(
+                color: Theme.of(context).colorScheme.primary,
+                fontWeight: FontWeight.w600,
+              ),
+              defaultTextStyle: TextStyle(
+                color: Theme.of(context).colorScheme.onSurface,
+              ),
+              selectedDecoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.primary,
+                shape: BoxShape.circle,
+              ),
+              todayDecoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.primary.withOpacity(0.2),
+                shape: BoxShape.circle,
+              ),
+              markerDecoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.secondary,
+                shape: BoxShape.circle,
+              ),
+              markersMaxCount: 3,
+              markerSize: 6,
+              markerMargin: const EdgeInsets.symmetric(horizontal: 0.5),
             ),
-            leftChevronIcon: Icon(
-              Icons.chevron_left,
-              color: Theme.of(context).colorScheme.primary,
+            daysOfWeekStyle: DaysOfWeekStyle(
+              weekdayStyle: TextStyle(
+                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.8),
+                fontWeight: FontWeight.bold,
+              ),
+              weekendStyle: TextStyle(
+                color: Theme.of(context).colorScheme.primary,
+                fontWeight: FontWeight.bold,
+              ),
             ),
-            rightChevronIcon: Icon(
-              Icons.chevron_right,
-              color: Theme.of(context).colorScheme.primary,
-            ),
-          ),
-          calendarStyle: CalendarStyle(
-            outsideDaysVisible: false,
-            weekendTextStyle: TextStyle(
-              color: Theme.of(context).colorScheme.primary,
-            ),
-            selectedDecoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.primary,
-              shape: BoxShape.circle,
-            ),
-            todayDecoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.primary.withOpacity(0.5),
-              shape: BoxShape.circle,
-            ),
-            markerDecoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.secondary,
-              shape: BoxShape.circle,
-            ),
-            markersMaxCount: 3,
-            markerSize: 6,
-            markerMargin: const EdgeInsets.symmetric(horizontal: 0.5),
-          ),
-          daysOfWeekStyle: DaysOfWeekStyle(
-            weekdayStyle: TextStyle(
-              color: Theme.of(context).colorScheme.onSurface,
-              fontWeight: FontWeight.bold,
-            ),
-            weekendStyle: TextStyle(
-              color: Theme.of(context).colorScheme.primary,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          onDaySelected: (selectedDay, focusedDay) {
-            if (!isSameDay(_selectedDay, selectedDay)) {
+            onDaySelected: (selectedDay, focusedDay) {
+              if (!isSameDay(_selectedDay, selectedDay)) {
+                setState(() {
+                  _selectedDay = selectedDay;
+                  _focusedDay = focusedDay;
+                });
+                // 更新全局状态
+                notifier.selectDate(selectedDay);
+              }
+            },
+            onFormatChanged: (format) {
+              if (_calendarFormat != format) {
+                setState(() {
+                  _calendarFormat = format;
+                });
+              }
+            },
+            onPageChanged: (focusedDay) {
               setState(() {
-                _selectedDay = selectedDay;
                 _focusedDay = focusedDay;
               });
-              // 更新全局状态
-              notifier.selectDate(selectedDay);
-            }
-          },
-          onFormatChanged: (format) {
-            if (_calendarFormat != format) {
-              setState(() {
-                _calendarFormat = format;
-              });
-            }
-          },
-          onPageChanged: (focusedDay) {
-            setState(() {
-              _focusedDay = focusedDay;
-            });
-            // 当月份切换时，同步更新全局状态（但不改变选中日期）
-            // 如果当前选中的日期不在新月份中，则选中新月份的第一天
-            if (_focusedDay.year != _selectedDay.year ||
-                _focusedDay.month != _selectedDay.month) {
-              // 保持选中日期不变，只更新focusedDay
-            }
-          },
-          // 自定义事件标记构建器
-          calendarBuilders: CalendarBuilders(
-            markerBuilder: (context, date, events) {
-              if (events.isEmpty) return const SizedBox.shrink();
-              
-              // 如果事件数量超过3个，显示数字
-              if (events.length > 3) {
-                return Positioned(
-                  bottom: 1,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.secondary,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      '${events.length}',
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.onSecondary,
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
+              // 当月份切换时，同步更新全局状态（但不改变选中日期）
+              // 如果当前选中的日期不在新月份中，则选中新月份的第一天
+              if (_focusedDay.year != _selectedDay.year ||
+                  _focusedDay.month != _selectedDay.month) {
+                // 保持选中日期不变，只更新focusedDay
+              }
+            },
+            // 自定义事件标记构建器
+            calendarBuilders: CalendarBuilders(
+              markerBuilder: (context, date, events) {
+                if (events.isEmpty) return const SizedBox.shrink();
+                
+                // 如果事件数量超过3个，显示数字
+                if (events.length > 3) {
+                  return Positioned(
+                    bottom: 1,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.secondary,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        '${events.length}',
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.onSecondary,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
-                  ),
-                );
-              }
-              
-              // 显示事件标记点
-              return Row(
-                mainAxisSize: MainAxisSize.min,
-                children: events.take(3).map<Widget>((event) {
-                  return Container(
-                    width: 6,
-                    height: 6,
-                    margin: const EdgeInsets.symmetric(horizontal: 0.5),
-                    decoration: BoxDecoration(
-                      color: event.colorHex != null
-                          ? Color(event.colorHex!)
-                          : Theme.of(context).colorScheme.secondary,
-                      shape: BoxShape.circle,
-                    ),
                   );
-                }).toList(),
-              );
-            },
+                }
+                
+                // 显示事件标记点
+                return Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: events.take(3).map<Widget>((event) {
+                    return Container(
+                      width: 6,
+                      height: 6,
+                      margin: const EdgeInsets.symmetric(horizontal: 0.5),
+                      decoration: BoxDecoration(
+                        color: event.colorHex != null
+                            ? Color(event.colorHex!)
+                            : Theme.of(context).colorScheme.secondary,
+                        shape: BoxShape.circle,
+                      ),
+                    );
+                  }).toList(),
+                );
+              },
+            ),
           ),
         ),
-        const Divider(height: 1),
+        const SizedBox(height: 8),
+        Divider(
+          height: 1,
+          color: Theme.of(context).dividerColor.withOpacity(0.5),
+        ),
         // 选中日期的事件列表
         Expanded(
           child: _buildEventList(state),
