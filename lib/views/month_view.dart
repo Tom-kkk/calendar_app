@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 
 import '../models/calendar_event.dart';
 import '../providers/calendar_provider.dart';
+import '../widgets/event_card.dart';
 
 /// 月视图组件
 /// 使用table_calendar库实现完整的月视图功能
@@ -297,8 +298,6 @@ class _MonthViewState extends ConsumerState<MonthView> {
 
   /// 构建事件卡片
   Widget _buildEventCard(CalendarEvent event) {
-    final startTime = DateFormat('HH:mm', 'zh_CN').format(event.start);
-    final endTime = DateFormat('HH:mm', 'zh_CN').format(event.end);
     final isAllDay = event.start.hour == 0 &&
         event.start.minute == 0 &&
         event.end.hour == 23 &&
@@ -306,29 +305,18 @@ class _MonthViewState extends ConsumerState<MonthView> {
 
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
-      child: ListTile(
-        leading: Container(
-          width: 4,
-          decoration: BoxDecoration(
-            color: event.colorHex != null
-                ? Color(event.colorHex!)
-                : Theme.of(context).colorScheme.primary,
-            borderRadius: BorderRadius.circular(2),
-          ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        child: EventCard(
+          event: event,
+          showTime: !isAllDay,
+          onTap: () {
+            // TODO: 导航到事件详情页或弹出详情
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('查看事件: ${event.title}')),
+            );
+          },
         ),
-        title: Text(
-          event.title,
-          style: const TextStyle(fontWeight: FontWeight.bold),
-        ),
-        subtitle: Text(
-          isAllDay ? '全天' : '$startTime - $endTime',
-        ),
-        onTap: () {
-          // TODO: 导航到事件详情页
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('查看事件: ${event.title}')),
-          );
-        },
       ),
     );
   }

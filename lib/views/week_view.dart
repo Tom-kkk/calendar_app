@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 
 import '../models/calendar_event.dart';
 import '../providers/calendar_provider.dart';
+import '../widgets/event_card.dart';
 
 /// 周视图组件
 /// 显示一周7天的日程安排，支持时间轴展示
@@ -438,65 +439,13 @@ class _WeekViewState extends ConsumerState<WeekView> {
         right: 4,
         top: topPixels,
         height: heightPixels,
-        child: _buildEventCard(event, heightPixels),
+        child: EventCard(
+          event: event,
+          showTime: heightPixels > 30,
+          onTap: () => _showEventDetails(event),
+        ),
       );
     }).toList();
-  }
-
-  /// 构建事件卡片
-  Widget _buildEventCard(CalendarEvent event, double heightPixels) {
-    final startTime = DateFormat('HH:mm', 'zh_CN').format(event.start);
-    final endTime = DateFormat('HH:mm', 'zh_CN').format(event.end);
-    final color = event.colorHex != null
-        ? Color(event.colorHex!)
-        : Theme.of(context).colorScheme.primary;
-
-    return InkWell(
-      onTap: () {
-        _showEventDetails(event);
-      },
-      child: Container(
-        padding: const EdgeInsets.all(6),
-        decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
-          border: Border(
-            left: BorderSide(
-              color: color,
-              width: 3,
-            ),
-          ),
-          borderRadius: BorderRadius.circular(4),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              event.title,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-                color: color,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            if (heightPixels > 30) ...[
-              const SizedBox(height: 2),
-              Text(
-                '$startTime - $endTime',
-                style: TextStyle(
-                  fontSize: 10,
-                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
   }
 
   /// 显示事件详情
