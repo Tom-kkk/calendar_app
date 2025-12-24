@@ -238,10 +238,21 @@ class CalendarNotifier extends StateNotifier<CalendarState> {
       }
     }
     state = state.copyWith(events: updated);
-    // 保存到存储
+    // 先从存储中删除事件
+    _deleteEventFromStorage(uid);
+    // 保存到存储（同步剩余事件）
     _saveAllEvents();
     // 取消提醒
     _cancelEventReminders(uid);
+  }
+
+  /// 从存储中删除事件
+  Future<void> _deleteEventFromStorage(String uid) async {
+    try {
+      await _storageService.deleteEvent(uid);
+    } catch (e) {
+      // 删除失败时忽略错误，避免影响用户体验
+    }
   }
 }
 

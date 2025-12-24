@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../models/calendar_event.dart';
 import '../providers/calendar_provider.dart';
 import '../widgets/event_card.dart';
+import 'event_form_view.dart';
 
 /// 月视图组件
 /// 使用table_calendar库实现完整的月视图功能
@@ -322,12 +323,128 @@ class _MonthViewState extends ConsumerState<MonthView> {
           event: event,
           showTime: !isAllDay,
           onTap: () {
-            // TODO: 导航到事件详情页或弹出详情
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('查看事件: ${event.title}')),
-            );
+            _showEventDetails(event);
           },
         ),
+      ),
+    );
+  }
+
+  /// 显示事件详情
+  void _showEventDetails(CalendarEvent event) {
+    final startTime = DateFormat('yyyy年MM月dd日 HH:mm', 'zh_CN').format(event.start);
+    final endTime = DateFormat('yyyy年MM月dd日 HH:mm', 'zh_CN').format(event.end);
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(event.title),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (event.description != null && event.description!.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Text(
+                  '描述: ${event.description}',
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+              ],
+              const SizedBox(height: 8),
+              Text('开始时间: $startTime'),
+              Text('结束时间: $endTime'),
+              if (event.location != null && event.location!.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Text('地点: ${event.location}'),
+              ],
+              if (event.isAllDay) ...[
+                const SizedBox(height: 8),
+                const Text('全天事件'),
+              ],
+              if (event.reminders.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Text(
+                  '提醒: ${event.reminders.map((r) {
+                    final minutes = r.beforeTime.inMinutes;
+                    if (minutes < 60) {
+                      return '提前 $minutes 分钟';
+                    } else if (minutes < 1440) {
+                      return '提前 ${minutes ~/ 60} 小时';
+                    } else {
+                      return '提前 ${minutes ~/ 1440} 天';
+                    }
+                  }).join(', ')}',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ],
+            ],
+          ),
+        ),
+        actions: [
+          TextButton.icon(
+            onPressed: () {
+              Navigator.of(context).pop();
+              _deleteEvent(event);
+            },
+            icon: const Icon(Icons.delete_outline),
+            label: const Text('删除'),
+            style: TextButton.styleFrom(
+              foregroundColor: Theme.of(context).colorScheme.error,
+            ),
+          ),
+          TextButton.icon(
+            onPressed: () {
+              Navigator.of(context).pop();
+              _editEvent(event);
+            },
+            icon: const Icon(Icons.edit),
+            label: const Text('编辑'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('关闭'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 编辑事件
+  void _editEvent(CalendarEvent event) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => EventFormView(event: event),
+      ),
+    );
+  }
+
+  /// 删除事件
+  void _deleteEvent(CalendarEvent event) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('确认删除'),
+        content: Text('确定要删除事件"${event.title}"吗？'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () {
+              ref.read(calendarProvider.notifier).removeEvent(event.uid);
+              Navigator.of(context).pop();
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('事件已删除')),
+              );
+            },
+            style: TextButton.styleFrom(
+              foregroundColor: Theme.of(context).colorScheme.error,
+            ),
+            child: const Text('删除'),
+          ),
+        ],
       ),
     );
   }
