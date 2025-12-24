@@ -1,5 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/calendar_event.dart';
+import '../services/storage_service.dart';
+import '../services/notification_service.dart';
 
 /// 日/周/月视图枚举
 enum CalendarView { day, week, month }
@@ -31,13 +33,43 @@ class CalendarState {
 
 /// CalendarState 的状态管理器
 class CalendarNotifier extends StateNotifier<CalendarState> {
-  CalendarNotifier()
+  final StorageService _storageService;
+  final NotificationService _notificationService = NotificationService();
+
+  CalendarNotifier(this._storageService)
       : super(
           CalendarState(
             selectedDate: DateTime.now(),
             currentView: CalendarView.month,
           ),
-        );
+        ) {
+    // 初始化时加载保存的事件
+    _loadEvents();
+  }
+
+  /// 从存储服务加载事件
+  Future<void> _loadEvents() async {
+    try {
+      final events = _storageService.getAllEvents();
+      loadEvents(events);
+    } catch (e) {
+      // 如果加载失败（例如存储服务未初始化），忽略错误
+      // 应用启动时会先初始化存储服务
+    }
+  }
+
+  /// 保存所有事件到存储服务
+  Future<void> _saveAllEvents() async {
+    try {
+      final allEvents = <CalendarEvent>[];
+      for (final eventList in state.events.values) {
+        allEvents.addAll(eventList);
+      }
+      await _storageService.saveEvents(allEvents);
+    } catch (e) {
+      // 保存失败时忽略错误，避免影响用户体验
+    }
+  }
 
   void selectDate(DateTime date) {
     state = state.copyWith(selectedDate: DateTime(date.year, date.month, date.day));
@@ -101,6 +133,21 @@ class CalendarNotifier extends StateNotifier<CalendarState> {
       map.putIfAbsent(key, () => <CalendarEvent>[]).add(e);
     }
     state = state.copyWith(events: map);
+    // 加载完所有事件后，重新调度所有提醒
+    _rescheduleAllReminders();
+  }
+
+  /// 重新调度所有未过期事件的提醒
+  Future<void> _rescheduleAllReminders() async {
+    try {
+      final allEvents = <CalendarEvent>[];
+      for (final eventList in state.events.values) {
+        allEvents.addAll(eventList);
+      }
+      await _notificationService.rescheduleAllReminders(allEvents);
+    } catch (e) {
+      // 调度失败时忽略错误，避免影响用户体验
+    }
   }
 
   List<CalendarEvent> eventsFor(DateTime day) {
@@ -130,6 +177,19 @@ class CalendarNotifier extends StateNotifier<CalendarState> {
     final list = <CalendarEvent>[...(updated[key] ?? const <CalendarEvent>[]), event];
     updated[key] = list;
     state = state.copyWith(events: updated);
+    // 保存到存储
+    _saveAllEvents();
+    // 调度提醒
+    _scheduleEventReminders(event);
+  }
+
+  /// 调度事件的提醒
+  Future<void> _scheduleEventReminders(CalendarEvent event) async {
+    try {
+      await _notificationService.scheduleEventReminders(event);
+    } catch (e) {
+      // 调度失败时忽略错误，避免影响用户体验
+    }
   }
 
   /// 更新事件（根据 uid）
@@ -151,6 +211,20 @@ class CalendarNotifier extends StateNotifier<CalendarState> {
     updated[key] = list;
 
     state = state.copyWith(events: updated);
+    // 保存到存储
+    _saveAllEvents();
+    // 取消旧提醒并调度新提醒
+    _cancelEventReminders(event.uid);
+    _scheduleEventReminders(event);
+  }
+
+  /// 取消事件的提醒
+  Future<void> _cancelEventReminders(String eventUid) async {
+    try {
+      await _notificationService.cancelEventReminders(eventUid);
+    } catch (e) {
+      // 取消失败时忽略错误
+    }
   }
 
   /// 删除事件
@@ -164,12 +238,25 @@ class CalendarNotifier extends StateNotifier<CalendarState> {
       }
     }
     state = state.copyWith(events: updated);
+    // 保存到存储
+    _saveAllEvents();
+    // 取消提醒
+    _cancelEventReminders(uid);
   }
 }
+
+/// StorageService Provider
+/// 注意：存储服务应该在 main.dart 中初始化后再使用
+final storageServiceProvider = Provider<StorageService>((ref) {
+  throw UnimplementedError(
+    'StorageService should be initialized in main.dart and provided via override',
+  );
+});
 
 /// Provider：对外暴露 CalendarState
 final calendarProvider =
     StateNotifierProvider<CalendarNotifier, CalendarState>((ref) {
-  return CalendarNotifier();
+  final storageService = ref.watch(storageServiceProvider);
+  return CalendarNotifier(storageService);
 });
 

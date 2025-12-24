@@ -8,6 +8,8 @@ import 'package:timezone/data/latest_all.dart' as tz;
 import 'models/calendar_event.dart';
 import 'models/reminder_settings.dart';
 import 'providers/calendar_provider.dart';
+import 'services/storage_service.dart';
+import 'services/notification_service.dart';
 import 'views/day_view.dart';
 import 'views/week_view.dart';
 import 'views/month_view.dart';
@@ -22,10 +24,24 @@ Future<void> main() async {
   Hive.registerAdapter(CalendarEventAdapter());
   Hive.registerAdapter(ReminderSettingAdapter());
 
+  // 初始化存储服务
+  final storageService = StorageService();
+  await storageService.init();
+
   tz.initializeTimeZones(); // 加载时区数据，供本地通知使用
   await initializeDateFormatting('zh_CN', null); // 初始化中文本地化数据
 
-  runApp(const ProviderScope(child: MainApp()));
+  // 初始化通知服务
+  final notificationService = NotificationService();
+  await notificationService.initialize();
+
+  runApp(ProviderScope(
+    overrides: [
+      // 提供已初始化的存储服务实例
+      storageServiceProvider.overrideWithValue(storageService),
+    ],
+    child: const MainApp(),
+  ));
 }
 
 class MainApp extends StatelessWidget {
