@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../models/calendar_event.dart';
 import '../providers/calendar_provider.dart';
 import '../widgets/event_card.dart';
+import 'event_form_view.dart';
 
 /// 周视图组件
 /// 显示一周7天的日程安排，支持时间轴展示
@@ -98,6 +99,11 @@ class _WeekViewState extends ConsumerState<WeekView> {
 
   /// 判断是否为全天事件
   bool _isAllDayEvent(CalendarEvent event) {
+    // 优先使用模型的isAllDay属性
+    if (event.isAllDay) {
+      return true;
+    }
+    // 兼容旧数据：如果开始时间为00:00且结束时间为23:59，也认为是全天事件
     return event.start.hour == 0 &&
         event.start.minute == 0 &&
         event.end.hour == 23 &&
@@ -127,12 +133,14 @@ class _WeekViewState extends ConsumerState<WeekView> {
         // 周头部：显示日期和导航
         _buildWeekHeader(weekDays, selectedDate),
         const Divider(height: 1),
-        // 时间轴区域（上方显示日期头，下方同步滚动时间轴）
+        // 时间轴区域（上方显示日期头，全天事件行，下方同步滚动时间轴）
         Expanded(
           child: Column(
             children: [
               _buildDayHeaderRow(weekDays),
               Container(height: 1, color: Theme.of(context).dividerColor),
+              // 全天事件区域
+              _buildAllDayEventsRow(weekDays),
               Expanded(child: _buildWeekTimeAxis(weekDays)),
             ],
           ),
@@ -278,10 +286,9 @@ class _WeekViewState extends ConsumerState<WeekView> {
               final isLast = index == weekDays.length - 1;
               return [
                 Expanded(child: _buildDayHeader(day)),
-                if (!isLast)
+                  if (!isLast)
                   Container(
                     width: 1,
-                    height: 48,
                     color: Theme.of(context).dividerColor,
                   ),
               ];
@@ -289,6 +296,169 @@ class _WeekViewState extends ConsumerState<WeekView> {
           ),
         ),
       ],
+    );
+  }
+
+  /// 构建全天事件行
+  Widget _buildAllDayEventsRow(List<DateTime> weekDays) {
+    return Container(
+      constraints: const BoxConstraints(minHeight: 48),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.25),
+        border: Border(
+          bottom: BorderSide(
+            color: Theme.of(context).dividerColor,
+            width: 1,
+          ),
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // 时间标签列（与时间轴对齐，60+1=61像素）
+          SizedBox(
+            width: 60,
+            child: Padding(
+              padding: const EdgeInsets.only(right: 8, top: 12),
+              child: Text(
+                '全天',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                      fontWeight: FontWeight.w500,
+                    ),
+                textAlign: TextAlign.right,
+              ),
+            ),
+          ),
+          // 分隔线（与时间轴对齐）
+          Container(
+            width: 1,
+            color: Theme.of(context).dividerColor,
+          ),
+          // 日期列
+          Expanded(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: weekDays.asMap().entries.map((entry) {
+                final index = entry.key;
+                final day = entry.value;
+                final isLast = index == weekDays.length - 1;
+                final events = _getEventsForDay(day);
+                final allDayEvents = events.where(_isAllDayEvent).toList();
+                return Expanded(
+                  child: Container(
+                    constraints: const BoxConstraints(minHeight: 48),
+                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+                    decoration: BoxDecoration(
+                      border: isLast
+                          ? null
+                          : Border(
+                              right: BorderSide(
+                                color: Theme.of(context).dividerColor,
+                                width: 1,
+                              ),
+                            ),
+                    ),
+                    child: allDayEvents.isEmpty
+                        ? const SizedBox.shrink()
+                        : LayoutBuilder(
+                            builder: (context, constraints) {
+                              final availableWidth = constraints.maxWidth.isFinite 
+                                  ? constraints.maxWidth 
+                                  : double.infinity;
+                              // 确保每个事件卡片的最大宽度不超过可用空间减去边距
+                              final maxEventWidth = availableWidth > 8 
+                                  ? availableWidth - 8 
+                                  : availableWidth;
+                              return Wrap(
+                                spacing: 4,
+                                runSpacing: 4,
+                                alignment: WrapAlignment.start,
+                                crossAxisAlignment: WrapCrossAlignment.start,
+                                children: allDayEvents.map<Widget>((event) {
+                                  return SizedBox(
+                                    width: maxEventWidth > 0 ? maxEventWidth : null,
+                                    child: _buildAllDayEventChip(event),
+                                  );
+                                }).toList(),
+                              );
+                            },
+                          ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 构建全天事件标签
+  Widget _buildAllDayEventChip(CalendarEvent event) {
+    final color = event.colorHex != null
+        ? Color(event.colorHex!)
+        : Theme.of(context).colorScheme.primary;
+    final backgroundColor = color.withOpacity(0.15);
+    final borderColor = color.withOpacity(0.4);
+    
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () {
+          _showEventDetails(event);
+        },
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            color: backgroundColor,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: borderColor,
+              width: 1,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: color.withOpacity(0.1),
+                blurRadius: 4,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.start,
+            children: [
+              // 颜色指示点
+              Container(
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  color: color,
+                  shape: BoxShape.circle,
+                ),
+              ),
+              const SizedBox(width: 6),
+              // 事件标题 - 使用Flexible确保不会溢出
+              Flexible(
+                child: Text(
+                  event.title,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: color,
+                    letterSpacing: 0.2,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  softWrap: false,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -341,11 +511,16 @@ class _WeekViewState extends ConsumerState<WeekView> {
                   final isLast = index == weekDays.length - 1;
                   return [
                     Expanded(
-                      child: Stack(
-                        children: [
-                          _buildTimeGrid(hours, hourHeight),
-                          ..._buildDayEvents(day, hourHeight),
-                        ],
+                      child: GestureDetector(
+                        onTapDown: (details) {
+                          _handleTimeAxisTap(details, day, hourHeight);
+                        },
+                        child: Stack(
+                          children: [
+                            _buildTimeGrid(hours, hourHeight),
+                            ..._buildDayEvents(day, hourHeight),
+                          ],
+                        ),
                       ),
                     ),
                     if (!isLast)
@@ -423,26 +598,6 @@ class _WeekViewState extends ConsumerState<WeekView> {
                     ),
               ),
             ),
-            // 全天事件指示
-            if (allDayEvents.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.only(top: 4),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.secondary.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-      child: Text(
-                    '${allDayEvents.length}',
-                    style: TextStyle(
-                      fontSize: 10,
-                      color: Theme.of(context).colorScheme.secondary,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ),
           ],
         ),
       ),
@@ -459,20 +614,32 @@ class _WeekViewState extends ConsumerState<WeekView> {
 
   /// 构建时间网格线
   Widget _buildTimeGrid(List<int> hours, double hourHeight) {
-    return Column(
-      children: hours.map((hour) {
-        return Container(
-          height: hourHeight,
-          decoration: BoxDecoration(
-            border: Border(
-              bottom: BorderSide(
-                color: Theme.of(context).dividerColor.withOpacity(0.3),
-                width: 0.5,
+    return SizedBox(
+      height: hours.length * hourHeight,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: hours.asMap().entries.map((entry) {
+          final index = entry.key;
+          final hour = entry.value;
+          // 最后一个小时不需要底部边框，避免溢出
+          final isLast = index == hours.length - 1;
+          return SizedBox(
+            height: hourHeight,
+            child: Container(
+              decoration: BoxDecoration(
+                border: isLast
+                    ? null
+                    : Border(
+                        bottom: BorderSide(
+                          color: Theme.of(context).dividerColor.withOpacity(0.3),
+                          width: 0.5,
+                        ),
+                      ),
               ),
             ),
-          ),
-        );
-      }).toList(),
+          );
+        }).toList(),
+      ),
     );
   }
 
@@ -517,20 +684,131 @@ class _WeekViewState extends ConsumerState<WeekView> {
       context: context,
       builder: (context) => AlertDialog(
         title: Text(event.title),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('开始时间: $startTime'),
-            Text('结束时间: $endTime'),
-          ],
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (event.description != null && event.description!.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Text(
+                  '描述: ${event.description}',
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+              ],
+              const SizedBox(height: 8),
+              Text('开始时间: $startTime'),
+              Text('结束时间: $endTime'),
+              if (event.location != null && event.location!.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Text('地点: ${event.location}'),
+              ],
+              if (event.isAllDay) ...[
+                const SizedBox(height: 8),
+                const Text('全天事件'),
+              ],
+            ],
+          ),
         ),
         actions: [
+          TextButton.icon(
+            onPressed: () {
+              Navigator.of(context).pop();
+              _deleteEvent(event);
+            },
+            icon: const Icon(Icons.delete_outline),
+            label: const Text('删除'),
+            style: TextButton.styleFrom(
+              foregroundColor: Theme.of(context).colorScheme.error,
+            ),
+          ),
+          TextButton.icon(
+            onPressed: () {
+              Navigator.of(context).pop();
+              _editEvent(event);
+            },
+            icon: const Icon(Icons.edit),
+            label: const Text('编辑'),
+          ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
             child: const Text('关闭'),
           ),
         ],
+      ),
+    );
+  }
+
+  /// 编辑事件
+  void _editEvent(CalendarEvent event) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => EventFormView(event: event),
+      ),
+    );
+  }
+
+  /// 删除事件
+  void _deleteEvent(CalendarEvent event) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('确认删除'),
+        content: Text('确定要删除事件"${event.title}"吗？'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () {
+              ref.read(calendarProvider.notifier).removeEvent(event.uid);
+              Navigator.of(context).pop();
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('事件已删除')),
+              );
+            },
+            style: TextButton.styleFrom(
+              foregroundColor: Theme.of(context).colorScheme.error,
+            ),
+            child: const Text('删除'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 创建新事件
+  void _createNewEvent(DateTime date) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => EventFormView(
+          initialDate: date,
+        ),
+      ),
+    );
+  }
+
+  /// 处理时间轴点击事件
+  void _handleTimeAxisTap(TapDownDetails details, DateTime day, double hourHeight) {
+    // 计算点击位置对应的时间（分钟）
+    final localPosition = details.localPosition;
+    final minutes = localPosition.dy;
+    final hours = (minutes / hourHeight).floor();
+    final mins = ((minutes % hourHeight) / hourHeight * 60).floor();
+    
+    // 创建新事件的开始时间
+    final dayStart = _getDayStart(day);
+    final startTime = dayStart.add(Duration(hours: hours, minutes: mins));
+    // 结束时间默认为开始时间后1小时
+    final endTime = startTime.add(const Duration(hours: 1));
+    
+    // 打开新建事件表单
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => EventFormView(
+          initialDate: startTime,
+        ),
       ),
     );
   }

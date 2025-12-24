@@ -238,7 +238,7 @@ class _EventFormViewState extends ConsumerState<EventFormView> {
 
     // 创建或更新事件
     final event = CalendarEvent(
-      id: widget.event?.id,
+      uid: widget.event?.uid,
       title: _titleController.text.trim(),
       description: _descriptionController.text.trim().isEmpty
           ? null
@@ -256,7 +256,13 @@ class _EventFormViewState extends ConsumerState<EventFormView> {
     );
 
     // 保存到状态管理
-    ref.read(calendarProvider.notifier).addEvent(event);
+    if (widget.event == null) {
+      // 新增事件
+      ref.read(calendarProvider.notifier).addEvent(event);
+    } else {
+      // 更新事件
+      ref.read(calendarProvider.notifier).updateEvent(event);
+    }
 
     // 返回上一页
     if (mounted) {

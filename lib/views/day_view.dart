@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../models/calendar_event.dart';
 import '../providers/calendar_provider.dart';
 import '../widgets/event_card.dart';
+import 'event_form_view.dart';
 
 /// 日视图组件
 /// 显示单日详细时间轴，精确到小时/分钟
@@ -86,6 +87,11 @@ class _DayViewState extends ConsumerState<DayView> {
 
   /// 判断是否为全天事件
   bool _isAllDayEvent(CalendarEvent event) {
+    // 优先使用模型的isAllDay属性
+    if (event.isAllDay) {
+      return true;
+    }
+    // 兼容旧数据：如果开始时间为00:00且结束时间为23:59，也认为是全天事件
     return event.start.hour == 0 &&
         event.start.minute == 0 &&
         event.end.hour == 23 &&
@@ -113,8 +119,8 @@ class _DayViewState extends ConsumerState<DayView> {
         // 日期头部
         _buildDayHeader(selectedDate),
         const Divider(height: 1),
-        // 全天事件区域
-        if (allDayEvents.isNotEmpty) _buildAllDayEvents(allDayEvents),
+        // 全天事件区域（始终显示，即使没有事件也显示时间标签）
+        _buildAllDayEvents(allDayEvents),
         // 时间轴区域
         Expanded(
           child: _buildTimeAxis(dayStart, timedEvents),
@@ -135,25 +141,31 @@ class _DayViewState extends ConsumerState<DayView> {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           // 日期信息
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                DateFormat('yyyy年MM月dd日', 'zh_CN').format(date),
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-              ),
-              Text(
-                DateFormat('EEEE', 'zh_CN').format(date),
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
-                    ),
-              ),
-            ],
+          Flexible(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  DateFormat('yyyy年MM月dd日', 'zh_CN').format(date),
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+                Text(
+                  DateFormat('EEEE', 'zh_CN').format(date),
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                      ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
           ),
           // 导航按钮
           Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
               IconButton(
                 icon: const Icon(Icons.chevron_left),
@@ -161,11 +173,18 @@ class _DayViewState extends ConsumerState<DayView> {
                   ref.read(calendarProvider.notifier).goPreviousDay();
                 },
                 tooltip: '上一天',
+                padding: const EdgeInsets.all(8),
+                constraints: const BoxConstraints(),
               ),
               TextButton(
                 onPressed: () {
                   ref.read(calendarProvider.notifier).goToday();
                 },
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
                 child: const Text('今天'),
               ),
               IconButton(
@@ -174,6 +193,8 @@ class _DayViewState extends ConsumerState<DayView> {
                   ref.read(calendarProvider.notifier).goNextDay();
                 },
                 tooltip: '下一天',
+                padding: const EdgeInsets.all(8),
+                constraints: const BoxConstraints(),
               ),
             ],
           ),
@@ -185,9 +206,9 @@ class _DayViewState extends ConsumerState<DayView> {
   /// 构建全天事件区域
   Widget _buildAllDayEvents(List<CalendarEvent> events) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      constraints: const BoxConstraints(minHeight: 48),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.3),
+        color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.25),
         border: Border(
           bottom: BorderSide(
             color: Theme.of(context).dividerColor,
@@ -195,22 +216,60 @@ class _DayViewState extends ConsumerState<DayView> {
           ),
         ),
       ),
-      child: Column(
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            '全天',
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
-                ),
+          // 时间标签列（与时间轴对齐）
+          SizedBox(
+            width: 60,
+            child: Padding(
+              padding: const EdgeInsets.only(right: 8, top: 12),
+              child: Text(
+                '全天',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                      fontWeight: FontWeight.w500,
+                    ),
+                textAlign: TextAlign.right,
+              ),
+            ),
           ),
-          const SizedBox(height: 4),
-          Wrap(
-            spacing: 8,
-            runSpacing: 4,
-            children: events.map<Widget>((event) {
-              return _buildAllDayEventChip(event);
-            }).toList(),
+          // 分隔线（与时间轴对齐）
+          Container(
+            width: 1,
+            color: Theme.of(context).dividerColor,
+          ),
+          // 事件内容区域
+          Expanded(
+            child: Container(
+              constraints: const BoxConstraints(minHeight: 48),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+              child: events.isEmpty
+                  ? const SizedBox.shrink()
+                  : LayoutBuilder(
+                      builder: (context, constraints) {
+                        final availableWidth = constraints.maxWidth.isFinite 
+                            ? constraints.maxWidth 
+                            : double.infinity;
+                        // 确保每个事件卡片的最大宽度不超过可用空间减去边距
+                        final maxEventWidth = availableWidth > 16 
+                            ? availableWidth - 16 
+                            : availableWidth;
+                        return Wrap(
+                          spacing: 6,
+                          runSpacing: 4,
+                          alignment: WrapAlignment.start,
+                          crossAxisAlignment: WrapCrossAlignment.start,
+                          children: events.map<Widget>((event) {
+                            return SizedBox(
+                              width: maxEventWidth > 0 ? maxEventWidth : null,
+                              child: _buildAllDayEventChip(event),
+                            );
+                          }).toList(),
+                        );
+                      },
+                    ),
+            ),
           ),
         ],
       ),
@@ -219,34 +278,66 @@ class _DayViewState extends ConsumerState<DayView> {
 
   /// 构建全天事件标签
   Widget _buildAllDayEventChip(CalendarEvent event) {
-    return InkWell(
-      onTap: () {
-        _showEventDetails(event);
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        decoration: BoxDecoration(
-          color: event.colorHex != null
-              ? Color(event.colorHex!).withOpacity(0.2)
-              : Theme.of(context).colorScheme.primary.withOpacity(0.2),
-          border: Border(
-            left: BorderSide(
-              color: event.colorHex != null
-                  ? Color(event.colorHex!)
-                  : Theme.of(context).colorScheme.primary,
-              width: 3,
+    final color = event.colorHex != null
+        ? Color(event.colorHex!)
+        : Theme.of(context).colorScheme.primary;
+    final backgroundColor = color.withOpacity(0.15);
+    final borderColor = color.withOpacity(0.4);
+    
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () {
+          _showEventDetails(event);
+        },
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            color: backgroundColor,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: borderColor,
+              width: 1,
             ),
+            boxShadow: [
+              BoxShadow(
+                color: color.withOpacity(0.1),
+                blurRadius: 4,
+                offset: const Offset(0, 2),
+              ),
+            ],
           ),
-          borderRadius: BorderRadius.circular(4),
-        ),
-        child: Text(
-          event.title,
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w500,
-            color: event.colorHex != null
-                ? Color(event.colorHex!)
-                : Theme.of(context).colorScheme.primary,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.start,
+            children: [
+              // 颜色指示点
+              Container(
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  color: color,
+                  shape: BoxShape.circle,
+                ),
+              ),
+              const SizedBox(width: 6),
+              // 事件标题 - 使用Flexible确保不会溢出
+              Flexible(
+                child: Text(
+                  event.title,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: color,
+                    letterSpacing: 0.2,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  softWrap: false,
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -296,13 +387,18 @@ class _DayViewState extends ConsumerState<DayView> {
             controller: _contentController,
             child: SizedBox(
               height: totalHeight,
-              child: Stack(
-                children: [
-                  // 时间网格线
-                  _buildTimeGrid(hours, hourHeight),
-                  // 事件块
-                  ...events.map((event) => _buildEventBlock(event, dayStart, hourHeight)),
-                ],
+              child: GestureDetector(
+                onTapDown: (details) {
+                  _handleTimeAxisTap(details, dayStart, hourHeight);
+                },
+                child: Stack(
+                  children: [
+                    // 时间网格线
+                    _buildTimeGrid(hours, hourHeight),
+                    // 事件块
+                    ...events.map((event) => _buildEventBlock(event, dayStart, hourHeight)),
+                  ],
+                ),
               ),
             ),
           ),
@@ -313,20 +409,32 @@ class _DayViewState extends ConsumerState<DayView> {
 
   /// 构建时间网格线
   Widget _buildTimeGrid(List<int> hours, double hourHeight) {
-    return Column(
-      children: hours.map((hour) {
-        return Container(
-          height: hourHeight,
-          decoration: BoxDecoration(
-            border: Border(
-              bottom: BorderSide(
-                color: Theme.of(context).dividerColor.withOpacity(0.3),
-                width: 0.5,
+    return SizedBox(
+      height: hours.length * hourHeight,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: hours.asMap().entries.map((entry) {
+          final index = entry.key;
+          final hour = entry.value;
+          // 最后一个小时不需要底部边框，避免溢出
+          final isLast = index == hours.length - 1;
+          return SizedBox(
+            height: hourHeight,
+            child: Container(
+              decoration: BoxDecoration(
+                border: isLast
+                    ? null
+                    : Border(
+                        bottom: BorderSide(
+                          color: Theme.of(context).dividerColor.withOpacity(0.3),
+                          width: 0.5,
+                        ),
+                      ),
               ),
             ),
-          ),
-        );
-      }).toList(),
+          );
+        }).toList(),
+      ),
     );
   }
 
@@ -342,7 +450,7 @@ class _DayViewState extends ConsumerState<DayView> {
 
     return Positioned(
       left: 8,
-      right: 8,
+      right: 4,
       top: topPixels,
       height: heightPixels,
       child: EventCard(
@@ -362,20 +470,130 @@ class _DayViewState extends ConsumerState<DayView> {
       context: context,
       builder: (context) => AlertDialog(
         title: Text(event.title),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('开始时间: $startTime'),
-            Text('结束时间: $endTime'),
-          ],
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (event.description != null && event.description!.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Text(
+                  '描述: ${event.description}',
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+              ],
+              const SizedBox(height: 8),
+              Text('开始时间: $startTime'),
+              Text('结束时间: $endTime'),
+              if (event.location != null && event.location!.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Text('地点: ${event.location}'),
+              ],
+              if (event.isAllDay) ...[
+                const SizedBox(height: 8),
+                const Text('全天事件'),
+              ],
+            ],
+          ),
         ),
         actions: [
+          TextButton.icon(
+            onPressed: () {
+              Navigator.of(context).pop();
+              _deleteEvent(event);
+            },
+            icon: const Icon(Icons.delete_outline),
+            label: const Text('删除'),
+            style: TextButton.styleFrom(
+              foregroundColor: Theme.of(context).colorScheme.error,
+            ),
+          ),
+          TextButton.icon(
+            onPressed: () {
+              Navigator.of(context).pop();
+              _editEvent(event);
+            },
+            icon: const Icon(Icons.edit),
+            label: const Text('编辑'),
+          ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
             child: const Text('关闭'),
           ),
         ],
+      ),
+    );
+  }
+
+  /// 编辑事件
+  void _editEvent(CalendarEvent event) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => EventFormView(event: event),
+      ),
+    );
+  }
+
+  /// 删除事件
+  void _deleteEvent(CalendarEvent event) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('确认删除'),
+        content: Text('确定要删除事件"${event.title}"吗？'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () {
+              ref.read(calendarProvider.notifier).removeEvent(event.uid);
+              Navigator.of(context).pop();
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('事件已删除')),
+              );
+            },
+            style: TextButton.styleFrom(
+              foregroundColor: Theme.of(context).colorScheme.error,
+            ),
+            child: const Text('删除'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 创建新事件
+  void _createNewEvent(DateTime date) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => EventFormView(
+          initialDate: date,
+        ),
+      ),
+    );
+  }
+
+  /// 处理时间轴点击事件
+  void _handleTimeAxisTap(TapDownDetails details, DateTime dayStart, double hourHeight) {
+    // 计算点击位置对应的时间（分钟）
+    final localPosition = details.localPosition;
+    final minutes = localPosition.dy;
+    final hours = (minutes / hourHeight).floor();
+    final mins = ((minutes % hourHeight) / hourHeight * 60).floor();
+    
+    // 创建新事件的开始时间
+    final startTime = dayStart.add(Duration(hours: hours, minutes: mins));
+    // 结束时间默认为开始时间后1小时
+    final endTime = startTime.add(const Duration(hours: 1));
+    
+    // 打开新建事件表单
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => EventFormView(
+          initialDate: startTime,
+        ),
       ),
     );
   }

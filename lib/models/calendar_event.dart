@@ -7,6 +7,8 @@ import 'reminder_settings.dart';
 @HiveType(typeId: 0)
 class CalendarEvent {
   CalendarEvent({
+    String? uid,
+    // 兼容旧代码中使用的 id 命名参数（例如：id: ...）
     String? id,
     required this.title,
     this.description,
@@ -17,16 +19,17 @@ class CalendarEvent {
     List<ReminderSetting>? reminders,
     this.isAllDay = false,
     this.recurrenceRule,
+    this.timeZone,
     DateTime? createdAt,
     DateTime? updatedAt,
-  })  : id = id ?? const Uuid().v4(),
+  })  : uid = uid ?? id ?? const Uuid().v4(),
         reminders = reminders ?? [],
         createdAt = createdAt ?? DateTime.now(),
         updatedAt = updatedAt ?? DateTime.now();
 
   /// 唯一标识符（UUID）
   @HiveField(0)
-  final String id;
+  final String uid;
 
   /// 事件标题
   @HiveField(1)
@@ -73,9 +76,16 @@ class CalendarEvent {
   @HiveField(11)
   final DateTime updatedAt;
 
+  /// 事件时间的时区标识（对应 RFC5545 TZID）
+  @HiveField(12)
+  final String? timeZone;
+
+  /// RFC5545 语义兼容的别名
+  String get id => uid;
+
   /// 创建副本并更新指定字段
   CalendarEvent copyWith({
-    String? id,
+    String? uid,
     String? title,
     String? description,
     DateTime? start,
@@ -87,9 +97,10 @@ class CalendarEvent {
     String? recurrenceRule,
     DateTime? createdAt,
     DateTime? updatedAt,
+    String? timeZone,
   }) {
     return CalendarEvent(
-      id: id ?? this.id,
+      uid: uid ?? this.uid,
       title: title ?? this.title,
       description: description ?? this.description,
       start: start ?? this.start,
@@ -101,6 +112,7 @@ class CalendarEvent {
       recurrenceRule: recurrenceRule ?? this.recurrenceRule,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? DateTime.now(),
+      timeZone: timeZone ?? this.timeZone,
     );
   }
 
@@ -125,15 +137,15 @@ class CalendarEvent {
   @override
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
-    return other is CalendarEvent && other.id == id;
+    return other is CalendarEvent && other.uid == uid;
   }
 
   @override
-  int get hashCode => id.hashCode;
+  int get hashCode => uid.hashCode;
 
   @override
   String toString() {
-    return 'CalendarEvent(id: $id, title: $title, start: $start, end: $end)';
+    return 'CalendarEvent(uid: $uid, title: $title, start: $start, end: $end, tz: $timeZone)';
   }
 }
 
@@ -145,7 +157,7 @@ class CalendarEventAdapter extends TypeAdapter<CalendarEvent> {
   @override
   CalendarEvent read(BinaryReader reader) {
     // 读取基本字段
-    final id = reader.readString();
+    final uid = reader.readString();
     final title = reader.readString();
     final description = reader.readBool() ? reader.readString() : null;
     final start = DateTime.fromMillisecondsSinceEpoch(reader.readInt());
@@ -169,9 +181,10 @@ class CalendarEventAdapter extends TypeAdapter<CalendarEvent> {
     final recurrenceRule = reader.readBool() ? reader.readString() : null;
     final createdAt = DateTime.fromMillisecondsSinceEpoch(reader.readInt());
     final updatedAt = DateTime.fromMillisecondsSinceEpoch(reader.readInt());
+    final timeZone = reader.readBool() ? reader.readString() : null;
 
     return CalendarEvent(
-      id: id,
+      uid: uid,
       title: title,
       description: description,
       start: start,
@@ -183,12 +196,13 @@ class CalendarEventAdapter extends TypeAdapter<CalendarEvent> {
       recurrenceRule: recurrenceRule,
       createdAt: createdAt,
       updatedAt: updatedAt,
+      timeZone: timeZone,
     );
   }
 
   @override
   void write(BinaryWriter writer, CalendarEvent obj) {
-    writer.writeString(obj.id);
+    writer.writeString(obj.uid);
     writer.writeString(obj.title);
     writer.writeBool(obj.description != null);
     if (obj.description != null) {
@@ -220,6 +234,10 @@ class CalendarEventAdapter extends TypeAdapter<CalendarEvent> {
     }
     writer.writeInt(obj.createdAt.millisecondsSinceEpoch);
     writer.writeInt(obj.updatedAt.millisecondsSinceEpoch);
+    writer.writeBool(obj.timeZone != null);
+    if (obj.timeZone != null) {
+      writer.writeString(obj.timeZone!);
+    }
   }
 }
 

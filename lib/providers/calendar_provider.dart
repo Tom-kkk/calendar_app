@@ -93,9 +93,35 @@ class CalendarNotifier extends StateNotifier<CalendarState> {
     selectDate(nextDay);
   }
 
+  /// 从外部（例如事件 Provider / 存储层）批量加载事件，替换当前事件映射
+  void loadEvents(Iterable<CalendarEvent> events) {
+    final Map<DateTime, List<CalendarEvent>> map = {};
+    for (final e in events) {
+      final key = DateTime(e.start.year, e.start.month, e.start.day);
+      map.putIfAbsent(key, () => <CalendarEvent>[]).add(e);
+    }
+    state = state.copyWith(events: map);
+  }
+
   List<CalendarEvent> eventsFor(DateTime day) {
     final key = DateTime(day.year, day.month, day.day);
     return state.events[key] ?? const [];
+  }
+
+  /// 指定日期范围内的所有事件（闭区间）
+  List<CalendarEvent> eventsInRange(DateTime start, DateTime end) {
+    final result = <CalendarEvent>[];
+    final rangeStart = DateTime(start.year, start.month, start.day);
+    final rangeEnd = DateTime(end.year, end.month, end.day);
+
+    for (final entry in state.events.entries) {
+      final day = entry.key;
+      if ((day.isAtSameMomentAs(rangeStart) || day.isAfter(rangeStart)) &&
+          (day.isAtSameMomentAs(rangeEnd) || day.isBefore(rangeEnd))) {
+        result.addAll(entry.value);
+      }
+    }
+    return result;
   }
 
   void addEvent(CalendarEvent event) {
@@ -103,6 +129,40 @@ class CalendarNotifier extends StateNotifier<CalendarState> {
     final updated = Map<DateTime, List<CalendarEvent>>.from(state.events);
     final list = <CalendarEvent>[...(updated[key] ?? const <CalendarEvent>[]), event];
     updated[key] = list;
+    state = state.copyWith(events: updated);
+  }
+
+  /// 更新事件（根据 uid）
+  void updateEvent(CalendarEvent event) {
+    final updated = Map<DateTime, List<CalendarEvent>>.from(state.events);
+
+    // 先从所有日期里移除旧事件
+    for (final entry in updated.entries.toList()) {
+      updated[entry.key] =
+          entry.value.where((e) => e.uid != event.uid).toList(growable: true);
+      if (updated[entry.key]!.isEmpty) {
+        updated.remove(entry.key);
+      }
+    }
+
+    // 再按新开始日期插入
+    final key = DateTime(event.start.year, event.start.month, event.start.day);
+    final list = <CalendarEvent>[...(updated[key] ?? const <CalendarEvent>[]), event];
+    updated[key] = list;
+
+    state = state.copyWith(events: updated);
+  }
+
+  /// 删除事件
+  void removeEvent(String uid) {
+    final updated = Map<DateTime, List<CalendarEvent>>.from(state.events);
+    for (final entry in updated.entries.toList()) {
+      updated[entry.key] =
+          entry.value.where((e) => e.uid != uid).toList(growable: true);
+      if (updated[entry.key]!.isEmpty) {
+        updated.remove(entry.key);
+      }
+    }
     state = state.copyWith(events: updated);
   }
 }
