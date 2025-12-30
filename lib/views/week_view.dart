@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../models/calendar_event.dart';
 import '../providers/calendar_provider.dart';
 import '../widgets/event_card.dart';
+import '../utils/lunar_utils.dart';
 import 'event_form_view.dart';
 
 /// 周视图组件
@@ -548,6 +549,28 @@ class _WeekViewState extends ConsumerState<WeekView> {
         ref.watch(calendarProvider).selectedDate.day == day.day;
     final events = _getEventsForDay(day);
     final allDayEvents = events.where(_isAllDayEvent).toList();
+    final lunarInfo = LunarUtils.getLunarInfo(day);
+    final solarTerm = lunarInfo['solarTerm'];
+    final festival = lunarInfo['festival'];
+    final lunarDate = lunarInfo['lunarDate'];
+    
+    // 确定显示文本和颜色
+    String displayText = '';
+    Color textColor;
+    FontWeight fontWeight = FontWeight.normal;
+    
+    if (solarTerm != null) {
+      displayText = solarTerm;
+      textColor = Theme.of(context).colorScheme.error;
+      fontWeight = FontWeight.bold;
+    } else if (festival != null) {
+      displayText = festival;
+      textColor = Theme.of(context).colorScheme.primary;
+      fontWeight = FontWeight.bold;
+    } else {
+      displayText = lunarDate ?? '';
+      textColor = Theme.of(context).colorScheme.onSurface.withOpacity(0.6);
+    }
 
     return InkWell(
       onTap: () {
@@ -600,6 +623,19 @@ class _WeekViewState extends ConsumerState<WeekView> {
                     ),
               ),
             ),
+            const SizedBox(height: 2),
+            // 农历日期、节气或传统节日
+            if (displayText.isNotEmpty)
+              Text(
+                displayText,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      fontSize: 9,
+                      color: textColor,
+                      fontWeight: fontWeight,
+                    ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
           ],
         ),
       ),

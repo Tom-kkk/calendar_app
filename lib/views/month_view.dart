@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../models/calendar_event.dart';
 import '../providers/calendar_provider.dart';
 import '../widgets/event_card.dart';
+import '../utils/lunar_utils.dart';
 import 'event_form_view.dart';
 
 /// 月视图组件
@@ -195,6 +196,18 @@ class _MonthViewState extends ConsumerState<MonthView> {
             },
             // 自定义事件标记构建器
             calendarBuilders: CalendarBuilders(
+              defaultBuilder: (context, date, focusedDay) {
+                return _buildDayCell(context, date, focusedDay);
+              },
+              todayBuilder: (context, date, focusedDay) {
+                return _buildDayCell(context, date, focusedDay, isToday: true);
+              },
+              selectedBuilder: (context, date, focusedDay) {
+                return _buildDayCell(context, date, focusedDay, isSelected: true);
+              },
+              outsideBuilder: (context, date, focusedDay) {
+                return _buildDayCell(context, date, focusedDay, isOutside: true);
+              },
               markerBuilder: (context, date, events) {
                 if (events.isEmpty) return const SizedBox.shrink();
                 
@@ -445,6 +458,95 @@ class _MonthViewState extends ConsumerState<MonthView> {
             child: const Text('删除'),
           ),
         ],
+      ),
+    );
+  }
+
+  /// 构建日期单元格（包含农历和节气信息）
+  Widget _buildDayCell(
+    BuildContext context,
+    DateTime date,
+    DateTime focusedDay, {
+    bool isToday = false,
+    bool isSelected = false,
+    bool isOutside = false,
+  }) {
+    final lunarInfo = LunarUtils.getLunarInfo(date);
+    final solarTerm = lunarInfo['solarTerm'];
+    final festival = lunarInfo['festival'];
+    final lunarDate = lunarInfo['lunarDate'];
+    
+    // 判断是否为当前月份
+    final isCurrentMonth = date.year == focusedDay.year && date.month == focusedDay.month;
+    
+    final theme = Theme.of(context);
+    
+    // 确定显示文本和颜色
+    String displayText = '';
+    Color textColor;
+    FontWeight fontWeight = FontWeight.w400;
+    
+    if (solarTerm != null) {
+      displayText = solarTerm;
+      textColor = isSelected ? theme.colorScheme.onPrimary : theme.colorScheme.error;
+      fontWeight = FontWeight.w700;
+    } else if (festival != null) {
+      displayText = festival;
+      textColor = isSelected ? theme.colorScheme.onPrimary : theme.colorScheme.primary;
+      fontWeight = FontWeight.w700;
+    } else {
+      displayText = lunarDate ?? '';
+      textColor = isSelected
+          ? theme.colorScheme.onPrimary.withOpacity(0.82)
+          : theme.colorScheme.onSurface.withOpacity(0.62);
+    }
+
+    return Container(
+      margin: const EdgeInsets.all(6),
+      decoration: BoxDecoration(
+        color: isSelected
+            ? theme.colorScheme.primary
+            : isToday
+                ? theme.colorScheme.primary.withOpacity(0.15)
+                : Colors.transparent,
+        shape: BoxShape.circle,
+      ),
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              '${date.day}',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: isToday || isSelected ? FontWeight.w700 : FontWeight.w500,
+                color: isSelected
+                    ? theme.colorScheme.onPrimary
+                    : isToday
+                        ? theme.colorScheme.primary
+                        : isOutside || !isCurrentMonth
+                            ? theme.colorScheme.onSurface.withOpacity(0.35)
+                            : theme.colorScheme.onSurface,
+              ),
+            ),
+            if (isCurrentMonth && !isOutside && displayText.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 2, left: 4, right: 4, bottom: 2),
+                child: Text(
+                  displayText,
+                  style: TextStyle(
+                    fontSize: 9,
+                    height: 1.1,
+                    color: textColor,
+                    fontWeight: fontWeight,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }

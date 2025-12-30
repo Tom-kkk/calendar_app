@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../models/calendar_event.dart';
 import '../providers/calendar_provider.dart';
 import '../widgets/event_card.dart';
+import '../utils/lunar_utils.dart';
 import 'event_form_view.dart';
 
 /// 日视图组件
@@ -131,6 +132,11 @@ class _DayViewState extends ConsumerState<DayView> {
 
   /// 构建日期头部
   Widget _buildDayHeader(DateTime date) {
+    final lunarInfo = LunarUtils.getLunarInfo(date);
+    final solarTerm = lunarInfo['solarTerm'];
+    final festival = lunarInfo['festival'];
+    final lunarDate = lunarInfo['lunarDate'];
+    
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
@@ -153,10 +159,66 @@ class _DayViewState extends ConsumerState<DayView> {
                       ),
                   overflow: TextOverflow.ellipsis,
                 ),
+                Row(
+                  children: [
+                    Text(
+                      DateFormat('EEEE', 'zh_CN').format(date),
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                          ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    if (solarTerm != null) ...[
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.error.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(
+                            color: Theme.of(context).colorScheme.error.withOpacity(0.3),
+                            width: 1,
+                          ),
+                        ),
+                        child: Text(
+                          solarTerm,
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: Theme.of(context).colorScheme.error,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 11,
+                              ),
+                        ),
+                      ),
+                    ],
+                    if (festival != null && solarTerm == null) ...[
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(
+                            color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
+                            width: 1,
+                          ),
+                        ),
+                        child: Text(
+                          festival,
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: Theme.of(context).colorScheme.primary,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 11,
+                              ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+                const SizedBox(height: 4),
                 Text(
-                  DateFormat('EEEE', 'zh_CN').format(date),
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                  lunarDate ?? '',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                       ),
                   overflow: TextOverflow.ellipsis,
                 ),
