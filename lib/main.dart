@@ -14,6 +14,7 @@ import 'views/day_view.dart';
 import 'views/week_view.dart';
 import 'views/month_view.dart';
 import 'views/event_form_view.dart';
+import 'utils/lunar_utils.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -69,6 +70,7 @@ class MainApp extends StatelessWidget {
                 final date = calendar.selectedDate;
                 final theme = Theme.of(context);
                 final weekNumber = _getWeekNumber(date);
+                final lunarDateStr = LunarUtils.getLunarDateString(date);
 
                 return Scaffold(
                   backgroundColor: theme.scaffoldBackgroundColor,
@@ -114,7 +116,7 @@ class MainApp extends StatelessWidget {
                                 ),
                               ),
                               Text(
-                                '农历信息',
+                                '农历 $lunarDateStr',
                                 style: theme.textTheme.bodySmall?.copyWith(
                                   color: theme.colorScheme.onSurface.withOpacity(0.45),
                                 ),

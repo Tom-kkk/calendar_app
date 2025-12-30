@@ -474,7 +474,7 @@ class _MonthViewState extends ConsumerState<MonthView> {
     final lunarInfo = LunarUtils.getLunarInfo(date);
     final solarTerm = lunarInfo['solarTerm'];
     final festival = lunarInfo['festival'];
-    final lunarDate = lunarInfo['lunarDate'];
+    final lunarDay = lunarInfo['lunarDay'];
     
     // 判断是否为当前月份
     final isCurrentMonth = date.year == focusedDay.year && date.month == focusedDay.month;
@@ -495,7 +495,8 @@ class _MonthViewState extends ConsumerState<MonthView> {
       textColor = isSelected ? theme.colorScheme.onPrimary : theme.colorScheme.primary;
       fontWeight = FontWeight.w700;
     } else {
-      displayText = lunarDate ?? '';
+      // 默认只显示农历“日”，不包含月份
+      displayText = lunarDay ?? '';
       textColor = isSelected
           ? theme.colorScheme.onPrimary.withOpacity(0.82)
           : theme.colorScheme.onSurface.withOpacity(0.62);

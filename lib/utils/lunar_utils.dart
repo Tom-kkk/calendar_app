@@ -211,7 +211,7 @@ class LunarUtils {
     };
   }
 
-  /// 获取农历日期字符串
+  /// 获取农历日期字符串（包含月份+日期，如“正月初一”）
   static String getLunarDateString(DateTime solarDate) {
     final lunar = solarToLunar(solarDate);
     final month = lunar['month'] as int;
@@ -227,12 +227,20 @@ class LunarUtils {
       monthStr += '月';
     }
 
-    String dayStr = '';
-    if (day >= 1 && day <= 30) {
-      dayStr = _lunarDays[day - 1];
-    }
+    final dayStr = getLunarDayString(solarDate);
 
     return '$monthStr$dayStr';
+  }
+
+  /// 获取农历“日”字符串（不含月份，如“初一”）
+  static String getLunarDayString(DateTime solarDate) {
+    final lunar = solarToLunar(solarDate);
+    final day = lunar['day'] as int;
+
+    if (day >= 1 && day <= 30) {
+      return _lunarDays[day - 1];
+    }
+    return '';
   }
 
   /// 获取农历年份字符串（天干地支）
@@ -305,10 +313,11 @@ class LunarUtils {
   }
 
   /// 获取农历信息（用于显示）
-  /// 返回：{lunarDate: 农历日期, solarTerm: 节气, festival: 传统节日}
+  /// 返回：{lunarDate: 农历日期(含月), lunarDay: 农历日(不含月), solarTerm: 节气, festival: 传统节日}
   static Map<String, String?> getLunarInfo(DateTime solarDate) {
     return {
       'lunarDate': getLunarDateString(solarDate),
+      'lunarDay': getLunarDayString(solarDate),
       'solarTerm': getSolarTerm(solarDate),
       'festival': getTraditionalFestival(solarDate),
     };

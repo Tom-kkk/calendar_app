@@ -135,7 +135,7 @@ class _DayViewState extends ConsumerState<DayView> {
     final lunarInfo = LunarUtils.getLunarInfo(date);
     final solarTerm = lunarInfo['solarTerm'];
     final festival = lunarInfo['festival'];
-    final lunarDate = lunarInfo['lunarDate'];
+    final lunarDay = lunarInfo['lunarDay'];
     
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -215,8 +215,9 @@ class _DayViewState extends ConsumerState<DayView> {
                   ],
                 ),
                 const SizedBox(height: 4),
+                // 这里仅展示农历“日”，不包含月份
                 Text(
-                  lunarDate ?? '',
+                  lunarDay ?? '',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                       ),

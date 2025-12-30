@@ -552,7 +552,7 @@ class _WeekViewState extends ConsumerState<WeekView> {
     final lunarInfo = LunarUtils.getLunarInfo(day);
     final solarTerm = lunarInfo['solarTerm'];
     final festival = lunarInfo['festival'];
-    final lunarDate = lunarInfo['lunarDate'];
+    final lunarDay = lunarInfo['lunarDay'];
     
     // 确定显示文本和颜色
     String displayText = '';
@@ -568,7 +568,8 @@ class _WeekViewState extends ConsumerState<WeekView> {
       textColor = Theme.of(context).colorScheme.primary;
       fontWeight = FontWeight.bold;
     } else {
-      displayText = lunarDate ?? '';
+      // 默认只显示农历“日”，不包含月份
+      displayText = lunarDay ?? '';
       textColor = Theme.of(context).colorScheme.onSurface.withOpacity(0.6);
     }
 
