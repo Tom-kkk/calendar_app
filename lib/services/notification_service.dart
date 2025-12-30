@@ -256,5 +256,48 @@ class NotificationService {
     if (!_initialized) return;
     await _notificationsPlugin.cancelAll();
   }
+
+  /// 立即显示测试通知（用于测试通知效果）
+  /// [title] 通知标题
+  /// [body] 通知正文
+  Future<void> showTestNotification({
+    String title = '测试通知',
+    String body = '这是一条测试通知，用于验证通知功能是否正常工作',
+  }) async {
+    if (!_initialized) {
+      await initialize();
+    }
+
+    // 使用测试通知详情
+    const androidDetails = AndroidNotificationDetails(
+      'calendar_reminders',
+      '日程提醒',
+      channelDescription: '显示日程事件的提醒通知',
+      importance: Importance.high,
+      priority: Priority.high,
+      showWhen: true,
+      enableVibration: true,
+      playSound: true,
+    );
+
+    const iosDetails = DarwinNotificationDetails(
+      presentAlert: true,
+      presentBadge: true,
+      presentSound: true,
+    );
+
+    const notificationDetails = NotificationDetails(
+      android: androidDetails,
+      iOS: iosDetails,
+    );
+
+    // 立即显示通知
+    await _notificationsPlugin.show(
+      999999, // 使用特殊ID用于测试通知
+      title,
+      body,
+      notificationDetails,
+    );
+  }
 }
 

@@ -69,7 +69,6 @@ class MainApp extends StatelessWidget {
                 final date = calendar.selectedDate;
                 final theme = Theme.of(context);
                 final weekNumber = _getWeekNumber(date);
-                final monthText = '${date.year}年${date.month}月';
 
                 return Scaffold(
                   backgroundColor: theme.scaffoldBackgroundColor,
@@ -80,33 +79,26 @@ class MainApp extends StatelessWidget {
                         Padding(
                           padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
                           child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
+                              Text(
+                                '第$weekNumber周',
+                                style: theme.textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                  color: theme.colorScheme.onSurface.withOpacity(0.7),
+                                ),
+                              ),
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Text(
-                                    monthText,
-                                    style: theme.textTheme.headlineSmall?.copyWith(
-                                      fontWeight: FontWeight.w700,
-                                      color: theme.colorScheme.onSurface,
-                                    ),
+                                  IconButton(
+                                    icon: const Icon(Icons.expand_less),
+                                    onPressed: () {},
+                                    tooltip: '展开/收起',
                                   ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    '第$weekNumber周',
-                                    style: theme.textTheme.bodyMedium?.copyWith(
-                                      color: theme.colorScheme.onSurface.withOpacity(0.6),
-                                    ),
-                                  ),
+                                  const _OverflowMenu(),
                                 ],
                               ),
-                              const Spacer(),
-                              IconButton(
-                                icon: const Icon(Icons.expand_less),
-                                onPressed: () {},
-                                tooltip: '展开/收起',
-                              ),
-                              const _OverflowMenu(),
                             ],
                           ),
                         ),
@@ -259,12 +251,48 @@ class _OverflowMenu extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return PopupMenuButton<String>(
-      onSelected: (value) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('选择：$value')),
-        );
+      onSelected: (value) async {
+        if (value == 'test_notification') {
+          // 测试通知功能
+          final notificationService = NotificationService();
+          await notificationService.showTestNotification(
+            title: '日程提醒测试',
+            body: '今天 14:30 - 15:30\n📍 会议室A\n这是一个测试通知，用于验证通知功能',
+          );
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('测试通知已发送，请查看通知栏'),
+                duration: Duration(seconds: 2),
+              ),
+            );
+          }
+        } else if (value == 'settings') {
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('设置功能开发中')),
+            );
+          }
+        } else if (value == 'view_options') {
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('视图选项功能开发中')),
+            );
+          }
+        }
       },
       itemBuilder: (context) => const [
+        PopupMenuItem(
+          value: 'test_notification',
+          child: Row(
+            children: [
+              Icon(Icons.notifications_active, size: 20),
+              SizedBox(width: 8),
+              Text('测试通知'),
+            ],
+          ),
+        ),
+        PopupMenuDivider(),
         PopupMenuItem(
           value: 'settings',
           child: Text('设置'),
