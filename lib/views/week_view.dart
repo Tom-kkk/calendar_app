@@ -429,7 +429,8 @@ class _WeekViewState extends ConsumerState<WeekView> {
               ],
             ),
             child: Row(
-              mainAxisSize: MainAxisSize.min,
+              // 使用最大主轴尺寸，配合 Expanded 防止文本溢出报错
+              mainAxisSize: MainAxisSize.max,
               mainAxisAlignment: MainAxisAlignment.start,
               children: [
                 // 颜色指示点
@@ -442,7 +443,7 @@ class _WeekViewState extends ConsumerState<WeekView> {
                   ),
                 ),
                 const SizedBox(width: 4),
-                // 事件标题 - 使用Expanded确保不会溢出
+                // 事件标题 - 使用 Expanded 占满剩余空间，避免文字溢出
                 Expanded(
                   child: Text(
                     event.title,
@@ -750,28 +751,33 @@ class _WeekViewState extends ConsumerState<WeekView> {
           ),
         ),
         actions: [
-          TextButton.icon(
-            onPressed: () {
-              Navigator.of(context).pop();
-              _deleteEvent(event);
-            },
-            icon: const Icon(Icons.delete_outline),
-            label: const Text('删除'),
-            style: TextButton.styleFrom(
-              foregroundColor: Theme.of(context).colorScheme.error,
-            ),
-          ),
-          TextButton.icon(
-            onPressed: () {
-              Navigator.of(context).pop();
-              _editEvent(event);
-            },
-            icon: const Icon(Icons.edit),
-            label: const Text('编辑'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('关闭'),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('关闭'),
+              ),
+              TextButton.icon(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                  _editEvent(event);
+                },
+                icon: const Icon(Icons.edit),
+                label: const Text('编辑'),
+              ),
+              TextButton.icon(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                  _deleteEvent(event);
+                },
+                icon: const Icon(Icons.delete_outline),
+                label: const Text('删除'),
+                style: TextButton.styleFrom(
+                  foregroundColor: Theme.of(context).colorScheme.error,
+                ),
+              ),
+            ],
           ),
         ],
       ),
